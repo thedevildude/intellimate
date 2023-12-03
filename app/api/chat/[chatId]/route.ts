@@ -19,7 +19,7 @@ export async function POST(
     const { prompt } = await request.json();
     const user = await currentUser();
 
-    if (!user || !user.firstName || !user.id) {
+    if (!user || !user.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -32,7 +32,7 @@ export async function POST(
 
     const companion = await prismadb.companion.update({
       where: {
-        id: params.chatId
+        id: params.chatId,
       },
       data: {
         messages: {
@@ -42,7 +42,7 @@ export async function POST(
             userId: user.id,
           },
         },
-      }
+      },
     });
 
     if (!companion) {
@@ -55,7 +55,7 @@ export async function POST(
     const companionKey = {
       companionName: name!,
       userId: user.id,
-      modelName: "llama2-13b",
+      modelName: "meta/llama-2-13b-chat",
     };
     const memoryManager = await MemoryManager.getInstance();
 
@@ -67,7 +67,9 @@ export async function POST(
 
     // Query Pinecone
 
-    const recentChatHistory = await memoryManager.readLatestHistory(companionKey);
+    const recentChatHistory = await memoryManager.readLatestHistory(
+      companionKey
+    );
 
     // Right now the preamble is included in the similarity search, but that
     // shouldn't be an issue
@@ -85,7 +87,7 @@ export async function POST(
     // Call Replicate for inference
     const model = new Replicate({
       model:
-        "a16z-infra/llama-2-13b-chat:df7690f1994d94e96ad9d568eac121aecf50684a0b0963b25a41cc40061269e5",
+        "meta/llama-2-13b-chat:f4e2de70d66816a838a89eeeb621910adffb0dd0baba3976c96980970978018d",
       input: {
         max_length: 2048,
       },
@@ -128,7 +130,7 @@ export async function POST(
 
       await prismadb.companion.update({
         where: {
-          id: params.chatId
+          id: params.chatId,
         },
         data: {
           messages: {
@@ -138,12 +140,13 @@ export async function POST(
               userId: user.id,
             },
           },
-        }
+        },
       });
     }
 
     return new StreamingTextResponse(s);
   } catch (error) {
+    console.log(error);
     return new NextResponse("Internal Error", { status: 500 });
   }
-};
+}
